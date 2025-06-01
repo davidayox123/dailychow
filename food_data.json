@@ -1,0 +1,171 @@
+[
+
+  {
+    "item_name": "Bread and Akara",
+    "price": 1200
+  },
+  {
+    "item_name": "Yamarita Royals pack + 1 kebab",
+    "price": 2400
+  },
+  {
+    "item_name": "Yamarita Royals pack + 2 kebab",
+    "price": 2800
+  },
+  {
+    "item_name": "Yamarita Delish pack + 1 kebab",
+    "price": 2000
+  },
+  {
+    "item_name": "Regular pack",
+    "price": 1700
+  },
+  {
+    "item_name": "Fish Yam/potatoes only",
+    "price": 1500
+  },
+  {
+    "item_name": "1 croaker fish , yam/potatoes",
+    "price": 4500
+  },
+  {
+    "item_name": "1 catfish fish , yam/potatoes",
+    "price": 3500
+  },
+  {
+    "item_name": "1/2 catfish fish , yam/potatoes",
+    "price": 2200
+  },
+  {
+    "item_name": "1/2 fish only",
+    "price": 1200
+  },
+  {
+    "item_name": "1 tilapia fish , yam/potatoes",
+    "price": 4000
+  },
+  {
+    "item_name": "1 stick of fat(suya)",
+    "price": 300
+  },
+  {
+    "item_name": "1 stick of beef (suya)",
+    "price": 500
+  },
+  {
+    "item_name": "2 sticks of fat(suya)",
+    "price": 500
+  },
+  {
+    "item_name": "Shawarma(1 sausage) L",
+    "price": 2500
+  },
+  {
+    "item_name": "Shawarma(2 sausages)",
+    "price": 3000
+  },
+  {
+    "item_name": "Shawarma(1 sausage)",
+    "price": 2000
+  },
+  {
+    "item_name": "Shawarma",
+    "price": 3500
+  },
+  {
+    "item_name": "Pack",
+    "price": 200
+  },
+  {
+    "item_name": "Egg",
+    "price": 300
+  },
+  {
+    "item_name": "Ponmo",
+    "price": 100
+  },
+  {
+    "item_name": "Spoon of pepper sauce",
+    "price": 400
+  },
+  {
+    "item_name": "Boli +pack+1 egg",
+    "price": 2000
+  },
+  {
+    "item_name": "Spoon of stew",
+    "price": 300
+  },
+  {
+    "item_name": "Breadwarmer",
+    "price": 1300
+  },
+  {
+    "item_name": "Big Size Breadwarmer +2 sausages",
+    "price": 2100
+  },
+  {
+    "item_name": "Big Size Breadwarmer+3 sausages",
+    "price": 2400
+  },
+  {
+    "item_name": "Big Size Breadwarmer +1 sausage",
+    "price": 1800
+  },
+  {
+    "item_name": "Small Size Breadwarmer+2 sausages",
+    "price": 1600
+  },
+  {
+    "item_name": "Borito Super pack with Chicken + 3 sausages",
+    "price": 3300
+  },
+  {
+    "item_name": "Borito Super pack with Chicken + 2 sausages",
+    "price": 2900
+  },
+  {
+    "item_name": "Borito Regular chicken only",
+    "price": 1000
+  },
+  {
+    "item_name": "Borito Mega chicken only",
+    "price": 3000
+  },
+  {
+    "item_name": "Borito Mega pack with Chicken + 3 sausages",
+    "price": 3950
+  },
+  {
+    "item_name": "Borito Regular pack with Chicken + 3 sausages",
+    "price": 2450
+  },
+  {
+    "item_name": "Borito Super pack with Chicken + 1 sausage",
+    "price": 2650
+  },
+  {
+    "item_name": "Borito Mega pack with Chicken + 2 sausages",
+    "price": 3700
+  },
+  {
+    "item_name": "Borito Super chicken only",
+    "price": 1500
+  },
+  {
+    "item_name": "packedfood",
+    "price": 1900
+  },
+  {
+    "item_name": "drink",
+    "price": 450
+  },
+  {
+    "item_name": "633 burger",
+    "price": 1500
+  },
+  {
+    "item_name": "pizza",
+    "price": 2500
+  }
+]

@@ -1,0 +1,6 @@
+python-telegram-bot
+apscheduler
+requests
+python-dotenv
+scikit-learn
+psycopg2-binary
