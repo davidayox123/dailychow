@@ -1,6 +1,6 @@
-python-telegram-bot
-apscheduler
-requests
-python-dotenv
-scikit-learn
-psycopg2-binary
+python-telegram-bot>=20.0,<21.0
+psycopg2-binary>=2.9.0,<2.10.0
+python-dotenv>=1.0.0,<2.0.0
+APScheduler>=3.9.0,<4.0.0
+requests>=2.20.0,<3.0.0
+scikit-learn>=1.0.0,<2.0.0
