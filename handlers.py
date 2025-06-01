@@ -25,7 +25,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     welcome_message = f"👋 Welcome, {user.first_name}! I'm your personalized food budgeting assistant. 🤖\n\n"
     if user_data and user_data['monthly_budget'] and user_data['monthly_budget'] > 0:
-        welcome_message += f"💰 Your current monthly budget is ₱{user_data['monthly_budget']:.2f}, with a daily allowance of ₱{user_data['daily_allowance']:.2f}.\n"
+        welcome_message += f"💰 Your current monthly budget is ₦{user_data['monthly_budget']:.2f}, with a daily allowance of ₦{user_data['daily_allowance']:.2f}.\n"
     else:
         welcome_message += "🗓️ You haven't set a monthly budget yet. Use /setbudget to get started!\n"
     
@@ -66,8 +66,8 @@ async def set_budget_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             db.update_user_preferences(user_id, {})
 
         await update.message.reply_text(
-            f"Great! Your monthly budget is set to ₱{monthly_budget:.2f}.\n"
-            f"This gives you a daily allowance of ₱{daily_allowance:.2f}."
+            f"Great! Your monthly budget is set to ₦{monthly_budget:.2f}.\n"
+            f"This gives you a daily allowance of ₦{daily_allowance:.2f}."
         )
         return ConversationHandler.END
     except ValueError:
@@ -95,7 +95,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     daily_allowance = user_data['daily_allowance']
     today_str = date.today().strftime("%A")
-    message = f"Happy {today_str}! Your daily allowance: ₱{daily_allowance:.2f}\n\nMeal ideas for today:\n"
+    message = f"Happy {today_str}! Your daily allowance: ₦{daily_allowance:.2f}\n\nMeal ideas for today:\n"
     suggested_meals_text = []
     all_food_items = db.get_all_food_items()
     custom_meal_today_obj = None
@@ -105,7 +105,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         custom_meal_name = custom_plan[today_str]
         meal_item = db.get_food_item_by_name(custom_meal_name)
         if meal_item and meal_item['price'] <= daily_allowance:
-            suggested_meals_text.append(f"⭐ {meal_item['item_name']} (₱{meal_item['price']:.2f}) - Your custom pick!")
+            suggested_meals_text.append(f"⭐ {meal_item['item_name']} (₦{meal_item['price']:.2f}) - Your custom pick!")
             custom_meal_today_obj = meal_item
         else:
             message += f"Note: Your custom meal ({custom_meal_name}) isn't affordable/available today.\n"
@@ -119,7 +119,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if custom_meal_today_obj and rec['item'] == custom_meal_today_obj['item_name']:
                 continue
             if ai_suggestions_added < ai_limit:
-                temp_ai_text.append(f"🤖 {rec['item']} (₱{rec['price']:.2f}) - You might like this!")
+                temp_ai_text.append(f"🤖 {rec['item']} (₦{rec['price']:.2f}) - You might like this!")
                 ai_suggestions_added += 1
             else:
                 break
@@ -144,7 +144,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                     is_already_suggested = True
             
             if not is_already_suggested and item['price'] <= daily_allowance:
-                suggested_meals_text.append(f"🍲 {item['item_name']} (₱{item['price']:.2f})")
+                suggested_meals_text.append(f"🍲 {item['item_name']} (₦{item['price']:.2f})")
                 general_options_added += 1
                 if general_options_added >= needed_more_suggestions:
                     break
@@ -161,7 +161,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = update.effective_user.id
     user_data = db.get_user_data(user_id)
     if user_data:
-        await update.message.reply_text(f"Your current wallet balance is: ₱{user_data['wallet_balance']:.2f}")
+        await update.message.reply_text(f"Your current wallet balance is: ₦{user_data['wallet_balance']:.2f}")
     else:
         await update.message.reply_text("Could not retrieve your balance. Have you used /start?")
 
@@ -305,11 +305,26 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         message = "Your recent spending history:\n"
         for entry in history_entries:
             amount_val = entry['amount']
-            currency_symbol = "₱" 
+            # Default to NGN, adjust if other currencies were ever used and logged differently
+            currency_symbol = "₦" 
             
-            if "NGN" in entry['description'].upper() or "PAYSTACK" in entry['description'].upper() or "top-up" in entry['description'].lower() : 
-                currency_symbol = "NGN " 
+            # This logic might need adjustment if you have other currencies or ways to denote them.
+            # For now, assuming most things are NGN or should be displayed as NGN.
+            # If 'currency' field exists in entry and specifies something else, that could be used.
+            # However, the prompt is to change '₱' to '₦', implying a general switch to Naira.
+
+            if "NGN" in entry['description'].upper() or \
+               "PAYSTACK" in entry['description'].upper() or \
+               "top-up" in entry['description'].lower() or \
+               (entry.get('currency') and entry['currency'] == "NGN"):
+                currency_symbol = "NGN " # Using NGN for top-ups for clarity as per Paystack
             
+            # For general budget/allowance/meal items, use ₦
+            # This part assumes that if it's not explicitly NGN from description, it's a general budget item
+            # that should now use Naira sign.
+            # If you had other currencies like ₱ logged, this logic would need to be more specific.
+            # Given the request, we are changing all ₱ to ₦.
+
             if amount_val < 0:
                 amount_str = f"-{currency_symbol}{-amount_val:.2f}"
             else:
