@@ -14,6 +14,7 @@ from telegram.ext import (
     ConversationHandler,
     CallbackQueryHandler
 )
+from telegram import BotCommand # Add this import
 import asyncio
 import psycopg2 # For PostgreSQL connection test
 
@@ -92,6 +93,27 @@ async def main_bot_logic():
 
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     _bot_for_scheduler = application.bot # Set the global bot instance for the scheduler sender
+
+    # --- Set Bot Commands for the Menu Button ---
+    commands = [
+        BotCommand("start", "Welcome and overview"),
+        BotCommand("setbudget", "Set your monthly food budget"),
+        BotCommand("menu", "Show today's meal suggestions"),
+        BotCommand("balance", "Check your wallet balance"),
+        BotCommand("topup", "Add funds to your wallet"),
+        BotCommand("setbank", "Set your bank details for transfers"),
+        BotCommand("listallbanks", "List supported banks"),
+        BotCommand("history", "View your spending history"),
+        BotCommand("addmealplan", "Create a custom weekly meal plan"),
+        BotCommand("viewmealplan", "See your current meal plan"),
+        BotCommand("cancel", "Cancel the current operation") # Assuming you have a cancel handler
+    ]
+    try:
+        await application.bot.set_my_commands(commands)
+        logger.info("Bot commands set successfully for the menu button.")
+    except Exception as e:
+        logger.error(f"Error setting bot commands: {e}")
+
 
     # --- Conversation Handlers Setup ---
     set_budget_conv_handler = ConversationHandler(
