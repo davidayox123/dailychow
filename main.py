@@ -17,6 +17,8 @@ from telegram.ext import (
 from telegram import BotCommand # Add this import
 import asyncio
 import psycopg2 # For PostgreSQL connection test
+import aiohttp
+from aiohttp import web
 
 import database as db
 import scheduler 
@@ -77,6 +79,18 @@ async def load_food_data_if_needed():
     except Exception as e:
         logger.error(f"Error loading food data: {e}")
 
+# --- Webhook Setup ---
+import os
+PORT = int(os.environ.get("PORT", 10000))
+WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}"
+WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')}" + WEBHOOK_PATH
+
+async def handle_webhook(request):
+    """Aiohttp handler for Telegram webhook."""
+    data = await request.json()
+    await application.process_update(application.update_queue.bot._build_update(data))
+    return web.Response(text="ok")
+
 # --- Main Application Setup ---
 async def main_bot_logic():
     '''Sets up and runs the Telegram bot.'''
@@ -107,9 +121,11 @@ async def main_bot_logic():
     handlers.initialize_handlers_config({
         "PAYSTACK_CALLBACK_URL": PAYSTACK_CALLBACK_URL
     })
-
+    
+    # Build the application
+    global application
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    _bot_for_scheduler = application.bot # Set the global bot instance for the scheduler sender
+    _bot_for_scheduler = application.bot
 
     # --- Set Bot Commands for the Menu Button ---
     commands = [
@@ -194,44 +210,27 @@ async def main_bot_logic():
     # setup_scheduler in scheduler.py already starts it and returns the instance.
     logger.info("Scheduler initialized and started by setup_scheduler.")
 
-    # Run the bot until the user presses Ctrl-C
-    try:
-        logger.info("Initializing bot application...")
-        await application.initialize()
-        logger.info("Starting bot application...")
-        await application.start()
-        logger.info("Starting bot updater polling...")
-        await application.updater.start_polling()
-        logger.info("Bot application started successfully. Polling for updates...")
-        # Keep the main thread alive
-        while True:
-            await asyncio.sleep(3600) # Or some other mechanism to keep alive
-    except TimedOut:
-        logger.error("Telegram API request timed out. Please check your internet connection and Telegram's status. Bot will attempt to shut down.")
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot stopped by user or system exit.")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred in the main bot loop: {e}", exc_info=True)
-    finally:
-        logger.info("Shutting down scheduler...")
-        if active_scheduler and active_scheduler.running:
-            active_scheduler.shutdown() 
-        logger.info("Scheduler stopped.")
-        
-        logger.info("Shutting down bot application...")
-        if application.updater and application.updater.running:
-             await application.updater.stop()
-        
-        # Check if application was running before trying to stop it
-        if hasattr(application, 'running') and application.running:
-            await application.stop()
-        elif not (hasattr(application, 'running') and application.running) and hasattr(application, '_is_initialized') and application._is_initialized:
-            # If it was initialized but not "running" (e.g. due to polling not starting fully after a timeout)
-            # a full shutdown might still be needed.
-            logger.info("Application was initialized but may not have been fully running. Attempting shutdown.")
-        
-        await application.shutdown() # This should be called regardless to clean up resources
-        logger.info("Bot application shut down.")
+    # --- Webhook Setup ---
+    import os
+    PORT = int(os.environ.get("PORT", 10000))
+    WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}"
+    WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')}" + WEBHOOK_PATH
+
+    # Set webhook with Telegram
+    await application.bot.set_webhook(url=WEBHOOK_URL)
+
+    # Start aiohttp web server
+    app = web.Application()
+    app.router.add_post(WEBHOOK_PATH, handle_webhook)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    logger.info(f"Webhook server started at {WEBHOOK_URL} on port {PORT}")
+
+    # Keep alive
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     try:

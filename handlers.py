@@ -53,18 +53,16 @@ async def set_budget_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def set_budget_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Receives the budget amount and saves it."""
     user_id = update.effective_user.id
+    db.add_user(user_id)  # Ensure user exists before setting budget
     try:
         monthly_budget = float(update.message.text)
         if monthly_budget <= 0:
             await update.message.reply_text("Budget must be a positive number. Please try again.")
             return SET_BUDGET_AMOUNT
-        
         daily_allowance = db.set_user_budget(user_id, monthly_budget)
-        
         user_prefs = db.get_user_preferences(user_id)
         if not user_prefs:
             db.update_user_preferences(user_id, {})
-
         await update.message.reply_text(
             f"Great! Your monthly budget is set to ₦{monthly_budget:.2f}.\n"
             f"This gives you a daily allowance of ₦{daily_allowance:.2f}."
