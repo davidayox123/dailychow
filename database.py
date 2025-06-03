@@ -140,6 +140,17 @@ def set_user_budget(user_id: int, monthly_budget: float) -> float:
                 "UPDATE users SET monthly_budget = %s, daily_allowance = %s, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s",
                 (monthly_budget, daily_allowance, user_id)
             )
+            
+            # Check if the UPDATE actually affected any rows
+            if cur.rowcount == 0:
+                print(f"Warning: No user found with user_id {user_id} for budget update. User may not exist in database.")
+                # Try to add the user and update again
+                cur.execute(
+                    "INSERT INTO users (user_id, monthly_budget, daily_allowance, preferences) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET monthly_budget = EXCLUDED.monthly_budget, daily_allowance = EXCLUDED.daily_allowance, updated_at = CURRENT_TIMESTAMP",
+                    (user_id, monthly_budget, daily_allowance, json.dumps({}))
+                )
+                print(f"Inserted/updated user {user_id} with budget {monthly_budget} and daily allowance {daily_allowance}")
+            
             conn.commit()
         return daily_allowance
     except psycopg2.Error as e:
