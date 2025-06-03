@@ -211,6 +211,10 @@ async def main_bot_logic():
     # setup_scheduler in scheduler.py already starts it and returns the instance.
     logger.info("Scheduler initialized and started by setup_scheduler.")
 
+    # --- Initialize the application ---
+    await application.initialize()
+    logger.info("Application initialized successfully.")
+    
     # --- Webhook Setup ---
     import os
     PORT = int(os.environ.get("PORT", 10000))
@@ -219,6 +223,11 @@ async def main_bot_logic():
 
     # Set webhook with Telegram
     await application.bot.set_webhook(url=WEBHOOK_URL)
+    logger.info(f"Webhook set to {WEBHOOK_URL}")
+    
+    # --- Start the Application ---
+    await application.start()
+    logger.info("Application started successfully.")
 
     # Start aiohttp web server
     app = web.Application()
@@ -227,7 +236,9 @@ async def main_bot_logic():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    logger.info(f"Webhook server started at {WEBHOOK_URL} on port {PORT}")    # Keep alive
+    logger.info(f"Webhook server started at {WEBHOOK_URL} on port {PORT}")
+    logger.info("Bot is now running with webhook mode...")
+    # Keep alive
     logger.info("Bot is now running with webhook mode...")
     while True:
         await asyncio.sleep(3600)
