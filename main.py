@@ -14,7 +14,7 @@ from telegram.ext import (
     ConversationHandler,
     CallbackQueryHandler
 )
-from telegram import BotCommand # Add this import
+from telegram import BotCommand, Update # Add this import
 import asyncio
 import psycopg2 # For PostgreSQL connection test
 import aiohttp
@@ -88,7 +88,8 @@ WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
 async def handle_webhook(request):
     """Aiohttp handler for Telegram webhook."""
     data = await request.json()
-    await application.process_update(application.update_queue.bot._build_update(data))
+    update = Update.de_json(data=data, bot=application.bot)
+    await application.process_update(update)
     return web.Response(text="ok")
 
 # --- Main Application Setup ---
@@ -226,9 +227,8 @@ async def main_bot_logic():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    logger.info(f"Webhook server started at {WEBHOOK_URL} on port {PORT}")
-
-    # Keep alive
+    logger.info(f"Webhook server started at {WEBHOOK_URL} on port {PORT}")    # Keep alive
+    logger.info("Bot is now running with webhook mode...")
     while True:
         await asyncio.sleep(3600)
 
