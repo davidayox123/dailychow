@@ -17,14 +17,6 @@
     "price": 2000
   },
   {
-    "item_name": "Regular pack",
-    "price": 1700
-  },
-  {
-    "item_name": "Fish Yam/potatoes only",
-    "price": 1500
-  },
-  {
     "item_name": "1 croaker fish , yam/potatoes",
     "price": 4500
   },
@@ -45,18 +37,6 @@
     "price": 4000
   },
   {
-    "item_name": "1 stick of fat(suya)",
-    "price": 300
-  },
-  {
-    "item_name": "1 stick of beef (suya)",
-    "price": 500
-  },
-  {
-    "item_name": "2 sticks of fat(suya)",
-    "price": 500
-  },
-  {
     "item_name": "Shawarma(1 sausage) L",
     "price": 2500
   },
@@ -73,28 +53,8 @@
     "price": 3500
   },
   {
-    "item_name": "Pack",
-    "price": 200
-  },
-  {
-    "item_name": "Egg",
-    "price": 300
-  },
-  {
-    "item_name": "Ponmo",
-    "price": 100
-  },
-  {
-    "item_name": "Spoon of pepper sauce",
-    "price": 400
-  },
-  {
-    "item_name": "Boli +pack+1 egg",
-    "price": 2000
-  },
-  {
-    "item_name": "Spoon of stew",
-    "price": 300
+    "item_name": "Boli +pack+ 2egg+ 2 ponmo",
+    "price": 3000
   },
   {
     "item_name": "Breadwarmer",
@@ -153,12 +113,8 @@
     "price": 1500
   },
   {
-    "item_name": "packedfood",
-    "price": 1900
-  },
-  {
-    "item_name": "drink",
-    "price": 450
+    "item_name": "packedfood and drink",
+    "price": 2350
   },
   {
     "item_name": "633 burger",
@@ -166,6 +122,10 @@
   },
   {
     "item_name": "pizza",
+    "price": 2500
+  },
+  {
+    "item_name": "papachips + 2eggs + 1sausage",
     "price": 2500
   }
 ]
