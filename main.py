@@ -62,6 +62,21 @@ async def scheduler_message_sender(user_id: int, message: str):
     else:
         logger.error(f"Scheduler: Bot instance not available. Cannot send message to {user_id}.")
 
+# --- Function to load food data into the database on startup ---
+async def load_food_data_if_needed():
+    """Loads food data from food_data.json into the database if not already loaded."""
+    try:
+        # Only load if there are no food items in the DB
+        food_items = db.get_all_food_items()
+        if not food_items:
+            logger.info("No food items found in DB. Loading from food_data.json...")
+            db.load_food_items_from_json("food_data.json")
+            logger.info("Food data loaded into the database.")
+        else:
+            logger.info(f"{len(food_items)} food items already present in DB. Skipping food_data.json load.")
+    except Exception as e:
+        logger.error(f"Error loading food data: {e}")
+
 # --- Main Application Setup ---
 async def main_bot_logic():
     '''Sets up and runs the Telegram bot.'''
@@ -76,7 +91,6 @@ async def main_bot_logic():
             conn.close()
             logger.info("Database connection test successful and connection closed.")
         else:
-            # This case should ideally be handled by get_db_connection raising an error
             logger.critical("Failed to connect to PostgreSQL database (get_db_connection returned None). Bot cannot start.")
             return 
     except psycopg2.OperationalError as e:
@@ -85,6 +99,9 @@ async def main_bot_logic():
     except Exception as e:
         logger.critical(f"CRITICAL: An unexpected error occurred during database connection test: {e}. Bot cannot start.")
         return
+
+    # --- Load food data if needed ---
+    await load_food_data_if_needed()
 
     # Pass necessary config to handlers module
     handlers.initialize_handlers_config({
