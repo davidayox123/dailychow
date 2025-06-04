@@ -113,24 +113,32 @@ async def handle_webhook(request):
 async def main_bot_logic():
     '''Sets up and runs the Telegram bot.'''
     global _bot_for_scheduler
-    
-    # 1. Test Database Connection
-    logger.info("Attempting to connect to PostgreSQL database...")
+      # 1. Test Database Connection
+    logger.info("🔌 Attempting to connect to PostgreSQL database...")
     try:
         conn = db.get_db_connection()
         if conn:
-            logger.info("Successfully connected to PostgreSQL database.")
+            logger.info("✅ Successfully connected to PostgreSQL database.")
             conn.close()
-            logger.info("Database connection test successful and connection closed.")
+            logger.info("✅ Database connection test successful and connection closed.")
         else:
-            logger.critical("Failed to connect to PostgreSQL database (get_db_connection returned None). Bot cannot start.")
+            logger.critical("❌ Failed to connect to PostgreSQL database (get_db_connection returned None). Bot cannot start.")
             return 
     except psycopg2.OperationalError as e:
-        logger.critical(f"CRITICAL: PostgreSQL OperationalError: {e}. Bot cannot start. Check DB server, credentials, and network.")
+        logger.critical(f"❌ CRITICAL: PostgreSQL OperationalError: {e}. Bot cannot start. Check DB server, credentials, and network.")
         return
     except Exception as e:
-        logger.critical(f"CRITICAL: An unexpected error occurred during database connection test: {e}. Bot cannot start.")
+        logger.critical(f"❌ CRITICAL: An unexpected error occurred during database connection test: {e}. Bot cannot start.")
         return
+
+    # 2. Initialize Database Schema
+    logger.info("🔧 Initializing database schema...")
+    try:
+        db.initialize_database()
+        logger.info("✅ Database schema initialized successfully.")
+    except Exception as e:
+        logger.error(f"⚠️  Warning: Database schema initialization failed: {e}")
+        logger.info("Continuing startup - tables may already exist or will be created later.")
 
     # --- Load food data if needed ---
     await load_food_data_if_needed()

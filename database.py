@@ -30,32 +30,72 @@ def get_db_connection():
     try:
         # Try DATABASE_URL first (common for cloud platforms like Render)
         if DATABASE_URL:
-            print(f"Connecting to database using DATABASE_URL...")
-            conn = psycopg2.connect(DATABASE_URL)
+            print(f"🔌 Connecting to database using DATABASE_URL...")
+            # Add connection timeout and better error handling
+            conn = psycopg2.connect(
+                DATABASE_URL,
+                connect_timeout=10,  # 10 second timeout
+                sslmode='require' if 'render' in DATABASE_URL.lower() else 'prefer'
+            )
             print("✅ Database connection successful via DATABASE_URL")
+            
+            # Test the connection with a simple query
+            with conn.cursor() as test_cur:
+                test_cur.execute("SELECT 1")
+                result = test_cur.fetchone()
+                if result[0] == 1:
+                    print("✅ Database connection verified with test query")
+                else:
+                    print("⚠️  Database connection test query returned unexpected result")
+            
             return conn
         
         # Fall back to individual parameters (for local development)
         elif all([DB_NAME, DB_USER, DB_PASSWORD]):
-            print(f"Connecting to database using individual parameters: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+            print(f"🔌 Connecting to database using individual parameters: {DB_HOST}:{DB_PORT}/{DB_NAME}")
             conn = psycopg2.connect(
                 dbname=DB_NAME,
                 user=DB_USER,
                 password=DB_PASSWORD,
                 host=DB_HOST,
-                port=DB_PORT
+                port=DB_PORT,
+                connect_timeout=10
             )
             print("✅ Database connection successful via individual parameters")
             return conn
         
         else:
-            raise ValueError("Neither DATABASE_URL nor individual database parameters are properly configured")
+            error_msg = "❌ Neither DATABASE_URL nor individual database parameters are properly configured"
+            print(error_msg)
+            print(f"DATABASE_URL available: {'Yes' if DATABASE_URL else 'No'}")
+            print(f"Individual params available: DB_NAME={bool(DB_NAME)}, DB_USER={bool(DB_USER)}, DB_PASSWORD={bool(DB_PASSWORD)}")
+            raise ValueError(error_msg)
             
-    except psycopg2.Error as e:
-        print(f"❌ Error connecting to PostgreSQL database: {e}")
+    except psycopg2.OperationalError as e:
+        error_msg = f"❌ Database connection failed - Operational Error: {e}"
+        print(error_msg)
         print(f"DATABASE_URL available: {'Yes' if DATABASE_URL else 'No'}")
-        print(f"Individual params available: DB_NAME={bool(DB_NAME)}, DB_USER={bool(DB_USER)}, DB_PASSWORD={bool(DB_PASSWORD)}")
-        raise
+        print(f"Error details: {e.pgcode if hasattr(e, 'pgcode') else 'No error code'}")
+        if DATABASE_URL:
+            # Try to parse DATABASE_URL to show what we're connecting to (without exposing password)
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(DATABASE_URL)
+                print(f"Connection target: {parsed.hostname}:{parsed.port}/{parsed.path.lstrip('/')}")
+            except:
+                print("Could not parse DATABASE_URL for debugging")
+        raise ConnectionError(error_msg) from e
+    except psycopg2.Error as e:
+        error_msg = f"❌ Database error: {e}"
+        print(error_msg)
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error code: {e.pgcode if hasattr(e, 'pgcode') else 'No error code'}")
+        raise ConnectionError(error_msg) from e
+    except Exception as e:
+        error_msg = f"❌ Unexpected error connecting to database: {e}"
+        print(error_msg)
+        print(f"Error type: {type(e).__name__}")
+        raise ConnectionError(error_msg) from e
 
 def initialize_database():
     """Initializes the database schema if tables don't exist."""
@@ -128,6 +168,7 @@ def initialize_database():
 
 def add_user(user_id: int):
     """Adds a new user to the database if they don't already exist."""
+    print(f"ADD_USER: Attempting to add user {user_id}")
     conn = None
     try:
         conn = get_db_connection()
@@ -136,17 +177,42 @@ def add_user(user_id: int):
                 "INSERT INTO users (user_id, preferences) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING",
                 (user_id, json.dumps({})) # Initialize with empty preferences
             )
-            print(f"ADD_USER: Executed INSERT for user {user_id}, rows affected: {cur.rowcount}")
+            affected_rows = cur.rowcount
+            print(f"ADD_USER: Executed INSERT for user {user_id}, rows affected: {affected_rows}")
             conn.commit()
-            print(f"ADD_USER: Successfully added/ensured user {user_id} exists")
+            print(f"ADD_USER: ✅ Successfully added/ensured user {user_id} exists")
+            return True
+    except ConnectionError as e:
+        print(f"ADD_USER: ❌ Database connection failed for user {user_id}: {e}")
+        return False
     except psycopg2.Error as e:
-        print(f"ADD_USER: Error adding user {user_id}: {e}")
-        if conn: conn.rollback()
+        print(f"ADD_USER: ❌ Database error adding user {user_id}: {e}")
+        print(f"ADD_USER: Error type: {type(e).__name__}")
+        print(f"ADD_USER: Error code: {e.pgcode if hasattr(e, 'pgcode') else 'No error code'}")
+        if conn: 
+            try:
+                conn.rollback()
+            except:
+                pass
+        return False
+    except Exception as e:
+        print(f"ADD_USER: ❌ Unexpected error adding user {user_id}: {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
+        return False
     finally:
-        if conn: conn.close()
+        if conn: 
+            try:
+                conn.close()
+            except:
+                pass
 
 def get_user_data(user_id: int):
     """Retrieves all data for a specific user."""
+    print(f"GET_USER_DATA: Attempting to get data for user {user_id}")
     conn = None
     try:
         conn = get_db_connection()
@@ -156,11 +222,23 @@ def get_user_data(user_id: int):
             result = dict(user) if user else None
             print(f"GET_USER_DATA: User {user_id} data: {result}")
             return result
+    except ConnectionError as e:
+        print(f"GET_USER_DATA: ❌ Database connection failed for user {user_id}: {e}")
+        return None
     except psycopg2.Error as e:
-        print(f"GET_USER_DATA: Error getting user data for {user_id}: {e}")
+        print(f"GET_USER_DATA: ❌ Database error getting user data for {user_id}: {e}")
+        print(f"GET_USER_DATA: Error type: {type(e).__name__}")
+        print(f"GET_USER_DATA: Error code: {e.pgcode if hasattr(e, 'pgcode') else 'No error code'}")
+        return None
+    except Exception as e:
+        print(f"GET_USER_DATA: ❌ Unexpected error getting user data for {user_id}: {e}")
         return None
     finally:
-        if conn: conn.close()
+        if conn: 
+            try:
+                conn.close()
+            except:
+                pass
 
 def set_user_budget(user_id: int, monthly_budget: float) -> float:
     """Sets the monthly budget for a user and calculates daily allowance."""
@@ -188,14 +266,35 @@ def set_user_budget(user_id: int, monthly_budget: float) -> float:
                 print(f"SET_USER_BUDGET: INSERT/UPDATE query executed for user {user_id}, rows affected: {cur.rowcount}")
             
             conn.commit()
-            print(f"SET_USER_BUDGET: Successfully committed budget for user {user_id}")
+            print(f"SET_USER_BUDGET: ✅ Successfully committed budget for user {user_id}")
         return daily_allowance
+    except ConnectionError as e:
+        print(f"SET_USER_BUDGET: ❌ Database connection failed for user {user_id}: {e}")
+        return 0.0
     except psycopg2.Error as e:
-        print(f"SET_USER_BUDGET: Error setting budget for user {user_id}: {e}")
-        if conn: conn.rollback()
+        print(f"SET_USER_BUDGET: ❌ Database error setting budget for user {user_id}: {e}")
+        print(f"SET_USER_BUDGET: Error type: {type(e).__name__}")
+        print(f"SET_USER_BUDGET: Error code: {e.pgcode if hasattr(e, 'pgcode') else 'No error code'}")
+        if conn: 
+            try:
+                conn.rollback()
+            except:
+                pass
+        return 0.0
+    except Exception as e:
+        print(f"SET_USER_BUDGET: ❌ Unexpected error setting budget for user {user_id}: {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
         return 0.0
     finally:
-        if conn: conn.close()
+        if conn: 
+            try:
+                conn.close()
+            except:
+                pass
 
 def update_wallet_balance(user_id: int, amount: float, is_top_up: bool = False, currency: str = 'NGN'):
     """Updates the user's wallet balance. Note: Logging is now separate."""

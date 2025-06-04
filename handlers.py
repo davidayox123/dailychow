@@ -22,9 +22,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user = update.effective_user
     logger.info(f"START COMMAND: User {user.id} ({user.first_name}) started the bot")
     
-    # Ensure user is in DB
-    db.add_user(user.id)
-    logger.info(f"START COMMAND: Added user {user.id} to database")
+    # Add user to database if they don't exist
+    add_success = db.add_user(user.id)
+    if not add_success:
+        logger.error(f"START_COMMAND: Failed to add user {user.id} to database")
+        await update.message.reply_text(
+            "⚠️ Sorry, there seems to be a database connection issue. Please try again later or contact support."
+        )
+        return
+    
+    logger.info(f"START COMMAND: Successfully added/ensured user {user.id} exists in database")
     
     # Get user data and log it
     user_data = db.get_user_data(user.id)
@@ -66,8 +73,15 @@ async def set_budget_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     logger.info(f"SET_BUDGET_AMOUNT: User {user_id} entered budget text: '{budget_text}'")
     
     # Ensure user exists before setting budget
-    db.add_user(user_id)
-    logger.info(f"SET_BUDGET_AMOUNT: Added user {user_id} to database")
+    add_success = db.add_user(user_id)
+    if not add_success:
+        logger.error(f"SET_BUDGET_AMOUNT: Failed to add user {user_id} to database")
+        await update.message.reply_text(
+            "⚠️ Sorry, there seems to be a database connection issue. Please try again later or contact support."
+        )
+        return ConversationHandler.END
+    
+    logger.info(f"SET_BUDGET_AMOUNT: Successfully added/ensured user {user_id} exists in database")
     
     try:
         monthly_budget = float(budget_text)
@@ -77,10 +91,17 @@ async def set_budget_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             logger.warning(f"SET_BUDGET_AMOUNT: User {user_id} entered non-positive budget: {monthly_budget}")
             await update.message.reply_text("Budget must be a positive number. Please try again.")
             return SET_BUDGET_AMOUNT
-            
-        # Set the budget and get the calculated daily allowance
+              # Set the budget and get the calculated daily allowance
         daily_allowance = db.set_user_budget(user_id, monthly_budget)
         logger.info(f"SET_BUDGET_AMOUNT: Set budget for user {user_id}. Monthly: {monthly_budget}, Daily: {daily_allowance}")
+        
+        # Check if budget setting was successful
+        if daily_allowance == 0.0:
+            logger.error(f"SET_BUDGET_AMOUNT: Failed to set budget for user {user_id} - database operation returned 0.0")
+            await update.message.reply_text(
+                "⚠️ Sorry, there was an issue setting your budget. Please try again later or contact support."
+            )
+            return ConversationHandler.END
         
         # Verify by getting user data again
         user_data = db.get_user_data(user_id)
