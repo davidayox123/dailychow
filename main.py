@@ -87,10 +87,27 @@ WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'localhost')
 
 async def handle_webhook(request):
     """Aiohttp handler for Telegram webhook."""
-    data = await request.json()
-    update = Update.de_json(data=data, bot=application.bot)
-    await application.process_update(update)
-    return web.Response(text="ok")
+    try:
+        data = await request.json()
+        logger.info(f"WEBHOOK: Received update data: {data}")
+        
+        update = Update.de_json(data=data, bot=application.bot)
+        logger.info(f"WEBHOOK: Parsed update object: {update}")
+        
+        if update.message:
+            user_id = update.message.from_user.id
+            message_text = update.message.text
+            logger.info(f"WEBHOOK: Processing message from user {user_id}: '{message_text}'")
+        
+        await application.process_update(update)
+        logger.info("WEBHOOK: Update processed successfully")
+        
+        return web.Response(text="ok")
+    except Exception as e:
+        logger.error(f"WEBHOOK: Error processing webhook: {e}")
+        import traceback
+        logger.error(f"WEBHOOK: Traceback: {traceback.format_exc()}")
+        return web.Response(text="error", status=500)
 
 # --- Main Application Setup ---
 async def main_bot_logic():
@@ -227,11 +244,16 @@ async def main_bot_logic():
     
     # --- Start the Application ---
     await application.start()
-    logger.info("Application started successfully.")
-
+    logger.info("Application started successfully.")    # Health check endpoint to fix 404 error
+    async def health_check(request):
+        """Simple health check endpoint."""
+        return web.Response(text="Telegram Budget Bot is running! 🤖💰")
+    
     # Start aiohttp web server
     app = web.Application()
     app.router.add_post(WEBHOOK_PATH, handle_webhook)
+    app.router.add_get("/", health_check)  # Add root endpoint
+    app.router.add_get("/health", health_check)  # Alternative health endpoint
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)

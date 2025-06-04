@@ -107,9 +107,11 @@ def add_user(user_id: int):
                 "INSERT INTO users (user_id, preferences) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING",
                 (user_id, json.dumps({})) # Initialize with empty preferences
             )
+            print(f"ADD_USER: Executed INSERT for user {user_id}, rows affected: {cur.rowcount}")
             conn.commit()
+            print(f"ADD_USER: Successfully added/ensured user {user_id} exists")
     except psycopg2.Error as e:
-        print(f"Error adding user {user_id}: {e}")
+        print(f"ADD_USER: Error adding user {user_id}: {e}")
         if conn: conn.rollback()
     finally:
         if conn: conn.close()
@@ -122,9 +124,11 @@ def get_user_data(user_id: int):
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
             user = cur.fetchone()
-            return dict(user) if user else None
+            result = dict(user) if user else None
+            print(f"GET_USER_DATA: User {user_id} data: {result}")
+            return result
     except psycopg2.Error as e:
-        print(f"Error getting user data for {user_id}: {e}")
+        print(f"GET_USER_DATA: Error getting user data for {user_id}: {e}")
         return None
     finally:
         if conn: conn.close()
@@ -132,6 +136,8 @@ def get_user_data(user_id: int):
 def set_user_budget(user_id: int, monthly_budget: float) -> float:
     """Sets the monthly budget for a user and calculates daily allowance."""
     daily_allowance = round(monthly_budget / 30, 2) # Assuming 30 days per month
+    print(f"SET_USER_BUDGET: User {user_id}, Monthly: {monthly_budget}, Calculated Daily: {daily_allowance}")
+    
     conn = None
     try:
         conn = get_db_connection()
@@ -140,21 +146,23 @@ def set_user_budget(user_id: int, monthly_budget: float) -> float:
                 "UPDATE users SET monthly_budget = %s, daily_allowance = %s, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s",
                 (monthly_budget, daily_allowance, user_id)
             )
+            print(f"SET_USER_BUDGET: UPDATE query executed for user {user_id}, rows affected: {cur.rowcount}")
             
             # Check if the UPDATE actually affected any rows
             if cur.rowcount == 0:
-                print(f"Warning: No user found with user_id {user_id} for budget update. User may not exist in database.")
+                print(f"SET_USER_BUDGET: Warning: No user found with user_id {user_id} for budget update. User may not exist in database.")
                 # Try to add the user and update again
                 cur.execute(
                     "INSERT INTO users (user_id, monthly_budget, daily_allowance, preferences) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET monthly_budget = EXCLUDED.monthly_budget, daily_allowance = EXCLUDED.daily_allowance, updated_at = CURRENT_TIMESTAMP",
                     (user_id, monthly_budget, daily_allowance, json.dumps({}))
                 )
-                print(f"Inserted/updated user {user_id} with budget {monthly_budget} and daily allowance {daily_allowance}")
+                print(f"SET_USER_BUDGET: INSERT/UPDATE query executed for user {user_id}, rows affected: {cur.rowcount}")
             
             conn.commit()
+            print(f"SET_USER_BUDGET: Successfully committed budget for user {user_id}")
         return daily_allowance
     except psycopg2.Error as e:
-        print(f"Error setting budget for user {user_id}: {e}")
+        print(f"SET_USER_BUDGET: Error setting budget for user {user_id}: {e}")
         if conn: conn.rollback()
         return 0.0
     finally:

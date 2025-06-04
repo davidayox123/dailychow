@@ -20,13 +20,22 @@ def initialize_handlers_config(app_config):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handles the /start command."""
     user = update.effective_user
-    db.add_user(user.id) # Ensure user is in DB
+    logger.info(f"START COMMAND: User {user.id} ({user.first_name}) started the bot")
+    
+    # Ensure user is in DB
+    db.add_user(user.id)
+    logger.info(f"START COMMAND: Added user {user.id} to database")
+    
+    # Get user data and log it
     user_data = db.get_user_data(user.id)
+    logger.info(f"START COMMAND: User data for {user.id}: {user_data}")
 
     welcome_message = f"👋 Welcome, {user.first_name}! I'm your personalized food budgeting assistant. 🤖\n\n"
     if user_data and user_data['monthly_budget'] and user_data['monthly_budget'] > 0:
+        logger.info(f"START COMMAND: User {user.id} has monthly budget: {user_data['monthly_budget']}, daily allowance: {user_data['daily_allowance']}")
         welcome_message += f"💰 Your current monthly budget is ₦{user_data['monthly_budget']:.2f}, with a daily allowance of ₦{user_data['daily_allowance']:.2f}.\n"
     else:
+        logger.info(f"START COMMAND: User {user.id} has no budget set")
         welcome_message += "🗓️ You haven't set a monthly budget yet. Use /setbudget to get started!\n"
     
     welcome_message += "\nHere are some things I can do for you: ✨\n"
@@ -53,22 +62,43 @@ async def set_budget_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def set_budget_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Receives the budget amount and saves it."""
     user_id = update.effective_user.id
-    db.add_user(user_id)  # Ensure user exists before setting budget
+    budget_text = update.message.text
+    logger.info(f"SET_BUDGET_AMOUNT: User {user_id} entered budget text: '{budget_text}'")
+    
+    # Ensure user exists before setting budget
+    db.add_user(user_id)
+    logger.info(f"SET_BUDGET_AMOUNT: Added user {user_id} to database")
+    
     try:
-        monthly_budget = float(update.message.text)
+        monthly_budget = float(budget_text)
+        logger.info(f"SET_BUDGET_AMOUNT: Parsed monthly budget: {monthly_budget}")
+        
         if monthly_budget <= 0:
+            logger.warning(f"SET_BUDGET_AMOUNT: User {user_id} entered non-positive budget: {monthly_budget}")
             await update.message.reply_text("Budget must be a positive number. Please try again.")
             return SET_BUDGET_AMOUNT
+            
+        # Set the budget and get the calculated daily allowance
         daily_allowance = db.set_user_budget(user_id, monthly_budget)
+        logger.info(f"SET_BUDGET_AMOUNT: Set budget for user {user_id}. Monthly: {monthly_budget}, Daily: {daily_allowance}")
+        
+        # Verify by getting user data again
+        user_data = db.get_user_data(user_id)
+        logger.info(f"SET_BUDGET_AMOUNT: Verification - User data after setting budget: {user_data}")
+        
+        # Ensure user preferences exist
         user_prefs = db.get_user_preferences(user_id)
         if not user_prefs:
             db.update_user_preferences(user_id, {})
+            logger.info(f"SET_BUDGET_AMOUNT: Created empty preferences for user {user_id}")
+        
         await update.message.reply_text(
             f"Great! Your monthly budget is set to ₦{monthly_budget:.2f}.\n"
             f"This gives you a daily allowance of ₦{daily_allowance:.2f}."
         )
         return ConversationHandler.END
-    except ValueError:
+    except ValueError as e:
+        logger.error(f"SET_BUDGET_AMOUNT: Invalid number format for user {user_id}: '{budget_text}' - Error: {e}")
         await update.message.reply_text("That doesn't look like a valid number. Please enter your budget as a number (e.g., 15000).")
         return SET_BUDGET_AMOUNT
 
@@ -85,13 +115,18 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Shows today's meal suggestions based on budget, AI, and variety."""
     user_id = update.effective_user.id
+    logger.info(f"MENU COMMAND: User {user_id} requested menu")
+    
     user_data = db.get_user_data(user_id)
+    logger.info(f"MENU COMMAND: User data for {user_id}: {user_data}")
 
     if not user_data or not user_data['daily_allowance'] or user_data['daily_allowance'] <= 0:
+        logger.warning(f"MENU COMMAND: User {user_id} has no daily allowance set. User data: {user_data}")
         await update.message.reply_text("Your daily allowance is not set. Please use /setbudget first.")
         return
 
     daily_allowance = user_data['daily_allowance']
+    logger.info(f"MENU COMMAND: User {user_id} daily allowance: {daily_allowance}")
     today_str = date.today().strftime("%A")
     message = f"Happy {today_str}! Your daily allowance: ₦{daily_allowance:.2f}\n\nMeal ideas for today:\n"
     suggested_meals_text = []
