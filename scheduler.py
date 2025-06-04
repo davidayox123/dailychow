@@ -111,11 +111,21 @@ async def suggest_daily_meals_for_user(user_id: int, bot_send_message_func):
 async def scheduled_daily_meal_suggestions(bot_send_message_func):
     """Scheduled job to send daily meal suggestions to all active users."""
     print(f"SCHEDULER: Running daily meal suggestions job at {datetime.now()}")
-    conn = db.get_db_connection()
-    users = conn.execute("SELECT user_id FROM users WHERE monthly_budget > 0").fetchall()
-    conn.close()
-    for user_row in users:
-        await suggest_daily_meals_for_user(user_row['user_id'], bot_send_message_func)
+    try:
+        conn = db.get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM users WHERE monthly_budget > 0")
+            users = cur.fetchall()
+        conn.close()
+        
+        print(f"SCHEDULER: Found {len(users)} users with budgets set")
+        for user_row in users:
+            user_id = user_row[0]  # PostgreSQL returns tuples, not dict rows
+            await suggest_daily_meals_for_user(user_id, bot_send_message_func)
+    except Exception as e:
+        print(f"SCHEDULER: Error in scheduled_daily_meal_suggestions: {e}")
+        import traceback
+        print(f"SCHEDULER: Traceback: {traceback.format_exc()}")
 
 async def scheduled_daily_allowance_deduction_and_transfer(bot_send_message_func):
     """Scheduled job to deduct daily allowance and initiate transfers."""
@@ -230,12 +240,10 @@ def setup_scheduler(bot_send_message_coroutine):
         bot_send_message_coroutine: An awaitable function (coroutine) from the main bot
                                     that takes (user_id: int, message: str) to send messages.
     """
-    scheduler = AsyncIOScheduler(timezone="Asia/Manila") # Adjust timezone as needed
-
-    # Schedule daily meal suggestions (e.g., every day at 7 AM)
+    scheduler = AsyncIOScheduler(timezone="UTC")  # Use UTC for consistency across deployments    # Schedule daily meal suggestions (e.g., every day at 8 AM)
     scheduler.add_job(
         scheduled_daily_meal_suggestions, 
-        CronTrigger(hour=7, minute=0),
+        CronTrigger(hour=8, minute=0),
         args=[bot_send_message_coroutine]
     )
 

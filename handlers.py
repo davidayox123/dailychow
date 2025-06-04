@@ -610,6 +610,33 @@ async def list_all_banks_command(update: Update, context: ContextTypes.DEFAULT_T
     else:
         await update.message.reply_text("Could not fetch bank list from Paystack at the moment. Please try again later.")
 
+async def test_meal_suggestions_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Manual command to test meal suggestions - useful for debugging."""
+    user = update.effective_user
+    user_id = user.id
+    logger.info(f"TEST_MEAL_SUGGESTIONS: User {user_id} requested manual meal suggestions")
+    
+    try:
+        # Import scheduler functions
+        from scheduler import suggest_daily_meals_for_user
+        
+        # Create a message sender function for this context
+        async def send_meal_message(target_user_id: int, message: str):
+            if target_user_id == user_id:
+                await update.message.reply_text(message)
+            else:
+                # If for some reason we're sending to a different user
+                await context.bot.send_message(chat_id=target_user_id, text=message)
+        
+        await update.message.reply_text("🔍 Generating your meal suggestions...")
+        await suggest_daily_meals_for_user(user_id, send_meal_message)
+        
+    except Exception as e:
+        logger.error(f"TEST_MEAL_SUGGESTIONS: Error for user {user_id}: {e}", exc_info=True)
+        await update.message.reply_text(
+            "❌ Error generating meal suggestions. Please make sure you have set your budget with /setbudget first."
+        )
+
 # Fallback handler for conversation
 async def text_fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Sorry, I didn't understand that. If you're in a process (like setting budget or bank), please provide the requested info or use /cancel.")

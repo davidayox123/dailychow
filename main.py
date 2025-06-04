@@ -151,9 +151,7 @@ async def main_bot_logic():
     # Build the application
     global application
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    _bot_for_scheduler = application.bot
-
-    # --- Set Bot Commands for the Menu Button ---
+    _bot_for_scheduler = application.bot    # --- Set Bot Commands for the Menu Button ---
     commands = [
         BotCommand("start", "Welcome and overview"),
         BotCommand("setbudget", "Set your monthly food budget"),
@@ -165,6 +163,7 @@ async def main_bot_logic():
         BotCommand("history", "View your spending history"),
         BotCommand("addmealplan", "Create a custom weekly meal plan"),
         BotCommand("viewmealplan", "See your current meal plan"),
+        BotCommand("testmeals", "Test meal suggestions (debug)"),
         BotCommand("cancel", "Cancel the current operation") # Assuming you have a cancel handler
     ]
     try:
@@ -218,12 +217,12 @@ async def main_bot_logic():
     application.add_handler(add_meal_plan_conv_handler)
     application.add_handler(topup_conv_handler)
     application.add_handler(set_bank_conv_handler)
-
     application.add_handler(CommandHandler("menu", handlers.menu_command))
     application.add_handler(CommandHandler("balance", handlers.balance_command))
     application.add_handler(CommandHandler("history", handlers.history_command))
     application.add_handler(CommandHandler("viewmealplan", handlers.view_meal_plan_command))
     application.add_handler(CommandHandler("listallbanks", handlers.list_all_banks_command))
+    application.add_handler(CommandHandler("testmeals", handlers.test_meal_suggestions_command))
     
     application.add_handler(CallbackQueryHandler(handlers.confirm_paystack_payment_callback, pattern=r"^confirm_paystack_"))
 
