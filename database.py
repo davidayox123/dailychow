@@ -10,37 +10,66 @@ from datetime import datetime, date
 
 # Load environment variables for database connection
 load_dotenv()
+
+# Individual database connection variables (for local development)
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
+# Database connection URL (for Render and other cloud platforms)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 def get_db_connection():
-    """Establishes a connection to the PostgreSQL database."""
+    """Establishes a connection to the PostgreSQL database.
+    
+    Tries DATABASE_URL first (for Render/cloud deployments), 
+    then falls back to individual connection parameters.
+    """
     try:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
-        return conn
+        # Try DATABASE_URL first (common for cloud platforms like Render)
+        if DATABASE_URL:
+            print(f"Connecting to database using DATABASE_URL...")
+            conn = psycopg2.connect(DATABASE_URL)
+            print("✅ Database connection successful via DATABASE_URL")
+            return conn
+        
+        # Fall back to individual parameters (for local development)
+        elif all([DB_NAME, DB_USER, DB_PASSWORD]):
+            print(f"Connecting to database using individual parameters: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+            conn = psycopg2.connect(
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                host=DB_HOST,
+                port=DB_PORT
+            )
+            print("✅ Database connection successful via individual parameters")
+            return conn
+        
+        else:
+            raise ValueError("Neither DATABASE_URL nor individual database parameters are properly configured")
+            
     except psycopg2.Error as e:
-        print(f"Error connecting to PostgreSQL database: {e}")
-        # In a real application, you might want to raise this or handle it more gracefully
+        print(f"❌ Error connecting to PostgreSQL database: {e}")
+        print(f"DATABASE_URL available: {'Yes' if DATABASE_URL else 'No'}")
+        print(f"Individual params available: DB_NAME={bool(DB_NAME)}, DB_USER={bool(DB_USER)}, DB_PASSWORD={bool(DB_PASSWORD)}")
         raise
 
 def initialize_database():
     """Initializes the database schema if tables don't exist."""
-    if not all([DB_NAME, DB_USER, DB_PASSWORD]):
-        print("Database environment variables (DB_NAME, DB_USER, DB_PASSWORD) are not fully set. Skipping initialization.")
-        print(f"DB_NAME: {DB_NAME}, DB_USER: {DB_USER}, DB_PASSWORD: {'******' if DB_PASSWORD else None}")
+    # Check if we have database connection info
+    if not DATABASE_URL and not all([DB_NAME, DB_USER, DB_PASSWORD]):
+        print("❌ Database configuration incomplete!")
+        print(f"DATABASE_URL: {'✅ Set' if DATABASE_URL else '❌ Not set'}")
+        print(f"Individual params - DB_NAME: {bool(DB_NAME)}, DB_USER: {bool(DB_USER)}, DB_PASSWORD: {bool(DB_PASSWORD)}")
+        print("Skipping database initialization.")
         return
 
     conn = None  # Initialize conn to None
     try:
+        print("🔧 Initializing database schema...")
         conn = get_db_connection()
         with conn.cursor() as cur:
             # Users table
