@@ -34,7 +34,7 @@ def test_render_environment():
     # Test 2: Try to import our database module
     logger.info("📦 Testing database module import...")
     try:
-        import database as db
+        import database_improved as db
         logger.info("✅ Database module imported successfully")
     except Exception as e:
         logger.error(f"❌ Failed to import database module: {e}")

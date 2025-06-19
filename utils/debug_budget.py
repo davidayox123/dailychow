@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import our database module
-import database as db
+import database_improved as db
 
 def debug_budget_operations():
     """Debug the budget setting operations step by step."""

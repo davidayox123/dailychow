@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: dailychow-microservices
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main_microservices.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: KORAPAY_PUBLIC_KEY  
+        sync: false
+      - key: KORAPAY_SECRET_KEY
+        sync: false
+      - key: KORAPAY_CALLBACK_URL
+        sync: false
+      - key: MONNIFY_API_KEY
+        sync: false
+      - key: MONNIFY_SECRET_KEY
+        sync: false
+      - key: MONNIFY_CONTRACT_CODE
+        sync: false
+      - key: MONNIFY_BASE_URL
+        value: https://api.monnify.com
+      - key: DEBUG
+        value: false
+
+databases:
+  - name: dailychow-postgres
+    databaseName: dailychow
+    user: dailychow_user

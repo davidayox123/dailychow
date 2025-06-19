@@ -22,7 +22,7 @@ def check_environment_variables():
         'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT'
     ]
     
-    optional_vars = ['DATABASE_URL', 'PORT', 'PAYSTACK_SECRET_KEY']
+    optional_vars = ['DATABASE_URL', 'PORT', 'KORAPAY_SECRET_KEY', 'MONNIFY_API_KEY']
     
     missing_vars = []
     

@@ -3,7 +3,7 @@ Handles scheduled tasks for the bot using APScheduler.
 '''
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-import database as db 
+import database_improved as db 
 from datetime import datetime, date
 import asyncio
 import json
@@ -147,44 +147,48 @@ async def scheduled_daily_allowance_deduction_and_transfer(bot_send_message_func
         # 1. Deduct from wallet in DB
         db.update_wallet_balance(user_id, daily_allowance, is_top_up=False) # Removed currency=\'NGN\'
         db.log_spending(user_id, f"Daily allowance deduction for {date.today().isoformat()}", -daily_allowance, currency='NGN')
-        await bot_send_message_func(user_id, f"NGN{daily_allowance:.2f} has been deducted from your wallet for today\'s allowance.")
+        
+        await bot_send_message_func(user_id, f"₦{daily_allowance:.2f} has been deducted from your wallet for today's allowance.")
 
-        # 2. Initiate Paystack Transfer
-        if user_bank_details and user_bank_details.get('recipient_code'):
-            print(f"SCHEDULER: Initiating Paystack transfer of NGN{daily_allowance} to user {user_id}.")
-            amount_kobo = int(daily_allowance * 100) # Convert to Kobo
+        # 2. Initiate Monnify Transfer
+        if user_bank_details and user_bank_details.get('account_number') and user_bank_details.get('bank_code'):
+            print(f"SCHEDULER: Initiating Monnify transfer of ₦{daily_allowance} to user {user_id}.")
+            
             transfer_ref = f"allowance_{user_id}_{date.today().isoformat()}_{int(datetime.now().timestamp())}"
             
-            # Ensure paystack_api is imported if not globally
+            # Use Monnify for bank transfers
             try:
-                import paystack_api 
+                import monnify_api
                 transfer_result = await asyncio.to_thread( 
-                    paystack_api.initiate_transfer,
-                    amount_kobo=amount_kobo,
-                    recipient_code=user_bank_details['recipient_code'],
-                    reason=f"Daily allowance {date.today().isoformat()}",
-                    reference=transfer_ref
+                    monnify_api.initiate_transfer,
+                    amount=daily_allowance,
+                    account_number=user_bank_details['account_number'],
+                    bank_code=user_bank_details['bank_code'],
+                    narration=f"Daily allowance {date.today().isoformat()}",
+                    reference=transfer_ref,
+                    account_name=user_bank_details.get('account_name', 'Beneficiary')
                 )
 
-                if transfer_result and transfer_result.get("status") is True:
-                    transfer_status_from_paystack = transfer_result.get("data", {}).get("status")
-                    await bot_send_message_func(user_id, f"Transfer of NGN{daily_allowance:.2f} to your bank account has been initiated (Status: {transfer_status_from_paystack}).")
-                    db.log_spending(user_id, f"Paystack transfer initiated: Ref {transfer_ref}, Status {transfer_status_from_paystack}", 0, currency='NGN')
+                if transfer_result and transfer_result.get("requestSuccessful") is True:
+                    transfer_data = transfer_result.get("responseBody", {})
+                    transfer_status = transfer_data.get("status", "Unknown")
+                    await bot_send_message_func(user_id, f"✅ Transfer of ₦{daily_allowance:.2f} to your bank account has been initiated (Status: {transfer_status}).")
+                    db.log_spending(user_id, f"Monnify transfer initiated: Ref {transfer_ref}, Status {transfer_status}", 0, currency='NGN')
                 else:
-                    error_message = transfer_result.get("message", "Unknown Paystack API error during transfer initiation.")
-                    await bot_send_message_func(user_id, f"Failed to initiate transfer to your bank. Error: {error_message}")
-                    db.log_spending(user_id, f"Paystack transfer initiation failed: {error_message}", 0, currency='NGN')
+                    error_message = transfer_result.get("responseMessage", "Unknown Monnify API error during transfer initiation.")
+                    await bot_send_message_func(user_id, f"❌ Failed to initiate transfer to your bank. Error: {error_message}")
+                    db.log_spending(user_id, f"Monnify transfer initiation failed: {error_message}", 0, currency='NGN')
             except ImportError:
-                print("SCHEDULER: paystack_api module not found. Cannot initiate transfer.")
-                await bot_send_message_func(user_id, "Error: Payment processing module is unavailable. Transfer could not be initiated.")
+                print("SCHEDULER: monnify_api module not found. Cannot initiate transfer.")
+                await bot_send_message_func(user_id, "⚠️ Error: Payment processing module is unavailable. Transfer could not be initiated.")
             except Exception as e:
-                print(f"SCHEDULER: Error during Paystack transfer for user {user_id}: {e}")
-                await bot_send_message_func(user_id, f"An unexpected error occurred while trying to initiate your daily transfer. Details: {e}")
-                db.log_spending(user_id, f"Paystack transfer error: {e}", 0, currency='NGN')
+                print(f"SCHEDULER: Error during Monnify transfer for user {user_id}: {e}")
+                await bot_send_message_func(user_id, f"⚠️ An unexpected error occurred while trying to initiate your daily transfer. Details: {e}")
+                db.log_spending(user_id, f"Monnify transfer error: {e}", 0, currency='NGN')
         else:
             # This case should ideally be prevented by the SQL query modification
-            await bot_send_message_func(user_id, "Could not initiate daily transfer: Bank details or Paystack recipient code not found in preferences.")
-            print(f"SCHEDULER: No bank details/recipient code for user {user_id} for Paystack transfer (should have been filtered by SQL).")
+            await bot_send_message_func(user_id, "❌ Could not initiate daily transfer: Bank details not found in preferences.")
+            print(f"SCHEDULER: No bank details for user {user_id} for Monnify transfer (should have been filtered by SQL).")
 
 async def scheduled_price_tracking(bot_send_message_func):
     """Scheduled job to track food price changes and notify users."""

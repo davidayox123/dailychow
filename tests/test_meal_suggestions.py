@@ -5,7 +5,7 @@ This tests the meal suggestion feature without needing the full bot setup.
 """
 
 import asyncio
-import database as db
+import database_improved as db
 from scheduler import suggest_daily_meals_for_user
 from datetime import datetime
 

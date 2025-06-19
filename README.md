@@ -1,6 +1,6 @@
 # DailyChowBot - Telegram Food Budgeting Assistant
 
-DailyChowBot is a Python-based Telegram bot designed to help users manage their food expenses, set budgets, get meal suggestions, and track spending. It integrates with Paystack for wallet top-ups and aims to provide a seamless experience for budget-conscious individuals, particularly students.
+DailyChowBot is a Python-based Telegram bot designed to help users manage their food expenses, set budgets, get meal suggestions, and track spending. It integrates with Korapay for wallet top-ups and Monnify for bank transfers, providing a seamless experience for budget-conscious individuals, particularly students in Nigeria.
 
 ## Features
 
@@ -14,9 +14,10 @@ DailyChowBot is a Python-based Telegram bot designed to help users manage their 
     *   Considers meal variety and affordability.
 *   **Wallet System**:
     *   Users have a virtual wallet to track their food funds.
-    *   Check wallet balance (`/balance`).
-    *   Top up wallet using Paystack (`/topup`).
-*   **Paystack Integration**:
+    *   Check wallet balance (`/balance`).    *   Top up wallet using Korapay (`/topup`).
+*   **Payment Integration**:
+    *   **Korapay**: Secure wallet top-ups with multiple payment methods.
+    *   **Monnify**: Direct bank transfers for daily allowances.
     *   Securely add funds to the bot's wallet.
     *   Set bank details for potential daily allowance transfers (`/setbank`, `/listallbanks`).
     *   (Future: Automated daily allowance transfers to linked bank accounts).
@@ -32,7 +33,7 @@ DailyChowBot is a Python-based Telegram bot designed to help users manage their 
 ## Project Structure
 
 ```
-.env                # Environment variables (TELEGRAM_BOT_TOKEN, DB_*, PAYSTACK_*)
+.env                # Environment variables (TELEGRAM_BOT_TOKEN, DB_*, KORAPAY_*, MONNIFY_*)
 .env.example        # Example environment file
 .gitignore          # Specifies intentionally untracked files that Git should ignore
 README.md           # This file
@@ -42,8 +43,10 @@ food_data.json      # Contains a list of food items and their prices
 main.py             # Main application entry point, bot setup, and core logic
 constants.py        # Stores conversation handler states and other constants
 handlers.py         # Contains all Telegram command and message handlers
-database.py         # Handles all database interactions (PostgreSQL)
-paystack_api.py     # Manages communication with the Paystack API
+database_improved.py # Handles all database interactions (PostgreSQL) with connection pooling
+korapay_api.py      # Manages communication with the Korapay API for payments
+monnify_api.py      # Manages communication with the Monnify API for bank transfers
+security_utils.py   # Security utilities for input validation, rate limiting, and logging
 ai_recommendation.py # Logic for generating AI-based meal suggestions
 scheduler.py        # Manages scheduled tasks (daily suggestions, etc.)
 requirements.txt    # Python package dependencies
@@ -55,7 +58,8 @@ requirements.txt    # Python package dependencies
     *   Python 3.10 or higher
     *   PostgreSQL server installed and running.
     *   A Telegram Bot Token (get this from BotFather on Telegram).
-    *   A Paystack account and API keys (Secret Key).
+    *   A Korapay account and API keys (Public and Secret Keys).
+    *   A Monnify account and API keys (API Key, Secret Key, Contract Code).
 
 2.  **Clone the Repository (if applicable)**:
     ```bash
@@ -102,20 +106,26 @@ requirements.txt    # Python package dependencies
         ```
     *   Edit the `.env` file with your actual credentials:
         ```env
-        TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
-
-        DB_HOST="localhost"
+        TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"        DB_HOST="localhost"
         DB_PORT="5432"
         DB_NAME="budget_bot_db"
         DB_USER="budget_bot_user"
         DB_PASSWORD="your_password" # The one you set in PostgreSQL
 
-        PAYSTACK_SECRET_KEY="YOUR_PAYSTACK_SECRET_KEY"
-        PAYSTACK_CALLBACK_URL="YOUR_PAYSTACK_CALLBACK_URL" # e.g., http://localhost:8000/paystack/callback if you set one up
+        # Korapay Configuration (for wallet top-ups)
+        KORAPAY_PUBLIC_KEY="YOUR_KORAPAY_PUBLIC_KEY"
+        KORAPAY_SECRET_KEY="YOUR_KORAPAY_SECRET_KEY"
+        KORAPAY_CALLBACK_URL="YOUR_KORAPAY_CALLBACK_URL" # e.g., https://yourapp.com/webhook/korapay
+        
+        # Monnify Configuration (for bank transfers)
+        MONNIFY_API_KEY="YOUR_MONNIFY_API_KEY"
+        MONNIFY_SECRET_KEY="YOUR_MONNIFY_SECRET_KEY"
+        MONNIFY_CONTRACT_CODE="YOUR_MONNIFY_CONTRACT_CODE"
+        MONNIFY_BASE_URL="https://sandbox-api.monnify.com" # Use https://api.monnify.com for production
         ```
 
 7.  **Initialize the Database Schema**:
-    *   The bot will attempt to create necessary tables on its first run if they don't exist (as per `database.py` logic).
+    *   The bot will attempt to create necessary tables on its first run if they don't exist (as per `database_improved.py` logic).
 
 8.  **Run the Bot**:
     ```bash
@@ -131,7 +141,7 @@ Available commands:
 *   `/setbudget` - Set your monthly food budget.
 *   `/menu` - Show today's meal suggestions.
 *   `/balance` - Check your wallet balance.
-*   `/topup` - Add funds to your wallet (via Paystack).
+*   `/topup` - Add funds to your wallet (via Korapay).
 *   `/setbank` - Set your bank details for daily allowance transfers.
 *   `/listallbanks` - See a list of supported banks for transfers.
 *   `/history` - View your spending history.
