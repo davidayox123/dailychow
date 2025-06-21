@@ -1,5 +1,19 @@
 """
-Application Orchestrator - Manages and coordinates all microservices
+Application Orchestrator - Manages and coordinates all            
+            # 4. Validate all services
+            health_check = await self.health_check()
+            
+            if health_check['overall_status'] != 'healthy':
+                logger.error("❌ Service initialization failed health check")
+                return False
+            
+            self.is_initialized = True
+            logger.info("✅ All microservices initialized successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize application: {e}")
+            return Falses
 """
 
 import logging
@@ -64,9 +78,11 @@ class ApplicationOrchestrator:
             if health_check['overall_status'] != 'healthy':
                 logger.error("❌ Service initialization failed health check")
                 return False
-              self.is_initialized = True
+            
+            self.is_initialized = True
             logger.info("✅ All microservices initialized successfully")
-            return True            
+            return True
+            
         except Exception as e:
             logger.error(f"❌ Failed to initialize application: {e}")
             return False
