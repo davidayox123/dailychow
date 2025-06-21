@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class NotificationService(BaseService):
     """Service for managing notifications and messaging"""
     
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+    def __init__(self, service_name: str = "notification", config: Dict[str, Any] = None):
+        super().__init__(service_name, config or {})
         self.bot_instance = None
         self.message_templates = self._load_message_templates()
     

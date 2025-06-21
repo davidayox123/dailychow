@@ -57,8 +57,8 @@ class BudgetAlert:
 class BudgetService(BaseService):
     """Budget management service with advanced features"""
     
-    def __init__(self):
-        super().__init__("budget_service")
+    def __init__(self, service_name: str = "budget", config: Dict[str, Any] = None):
+        super().__init__(service_name, config or {})
         self.alert_thresholds = {
             "warning": 80.0,
             "critical": 95.0,

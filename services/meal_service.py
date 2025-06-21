@@ -93,8 +93,8 @@ class UserDietaryProfile:
 class MealService(BaseService):
     """Meal planning and recommendation service"""
     
-    def __init__(self):
-        super().__init__("meal_service")
+    def __init__(self, service_name: str = "meal", config: Dict[str, Any] = None):
+        super().__init__(service_name, config or {})
         self.meal_database = {}  # Will be loaded from food_data.json
         self.ai_recommender = None
     

@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class BankService(BaseService):
     """Service for managing bank accounts and validation"""
     
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+    def __init__(self, service_name: str = "bank", config: Dict[str, Any] = None):
+        super().__init__(service_name, config or {})
         self.transfer_service = None  # Will be injected
         self.db_service = None  # Will be injected
     

@@ -33,8 +33,8 @@ class ApplicationOrchestrator:
     """Central orchestrator for all microservices"""
     
     def __init__(self, config_path: str = None):
-        self.config_manager = ConfigManager(config_path)
-        self.config = self.config_manager.get_config()
+        self.config_manager = ConfigManager()
+        self.config = {}
         
         # Initialize services
         self.services = {}
@@ -64,19 +64,20 @@ class ApplicationOrchestrator:
             if health_check['overall_status'] != 'healthy':
                 logger.error("❌ Service initialization failed health check")
                 return False
-            
-            self.is_initialized = True
+              self.is_initialized = True
             logger.info("✅ All microservices initialized successfully")
-            return True
-            
+            return True            
         except Exception as e:
             logger.error(f"❌ Failed to initialize application: {e}")
             return False
     
     async def _initialize_core_services(self):
         """Initialize core infrastructure services"""
-        # Database Service
-        self.services['database'] = DatabaseService(self.config)
+        # Initialize config manager first
+        await self.config_manager.initialize()
+        self.config = self.config_manager.get_config()
+          # Database Service
+        self.services['database'] = DatabaseService("database", self.config)
         await self.services['database'].initialize()
         
         logger.info("✅ Database service initialized")
@@ -84,25 +85,24 @@ class ApplicationOrchestrator:
     async def _initialize_business_services(self):
         """Initialize business logic services"""
         # User Service
-        self.services['user'] = UserService(self.config)
+        self.services['user'] = UserService("user", self.config)
         
         # Payment Service
-        self.services['payment'] = PaymentService(self.config)
+        self.services['payment'] = PaymentService("payment", self.config)
         
         # Transfer Service
-        self.services['transfer'] = TransferService(self.config)
+        self.services['transfer'] = TransferService("transfer", self.config)
         
         # Bank Service
-        self.services['bank'] = BankService(self.config)
+        self.services['bank'] = BankService("bank", self.config)
         
-        # Budget Service
-        self.services['budget'] = BudgetService(self.config)
+        # Budget Service        self.services['budget'] = BudgetService("budget", self.config)
         
         # Meal Service
-        self.services['meal'] = MealService(self.config)
+        self.services['meal'] = MealService("meal", self.config)
         
         # Notification Service
-        self.services['notification'] = NotificationService(self.config)
+        self.services['notification'] = NotificationService("notification", self.config)
         
         logger.info("✅ Business services initialized")
     

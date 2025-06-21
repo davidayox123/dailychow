@@ -45,12 +45,12 @@ class AppConfig:
     debug: bool = False
     port: int = 10000
 
-@service
+@service("config")
 class ConfigManager(BaseService):
     """Manages application configuration and environment variables"""
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, service_name: str = "config", config: Dict[str, Any] = None):
+        super().__init__(service_name, config or {})
         load_dotenv()
         self._config: Optional[AppConfig] = None
     
@@ -106,8 +106,7 @@ class ConfigManager(BaseService):
             webhook_url=os.getenv("TELEGRAM_WEBHOOK_URL")
         )
         
-        return AppConfig(
-            database=database_config,
+        return AppConfig(            database=database_config,
             korapay=korapay_config,
             monnify=monnify_config,
             telegram=telegram_config,
@@ -128,6 +127,38 @@ class ConfigManager(BaseService):
         if not self._config:
             raise RuntimeError("Configuration not initialized. Call initialize() first.")
         return self._config
+    
+    def get_config(self) -> Dict[str, Any]:
+        """Get configuration as dictionary for compatibility"""
+        if not self._config:
+            raise RuntimeError("Configuration not initialized. Call initialize() first.")
+        
+        return {
+            "database": {
+                "url": self._config.database.url,
+                "pool_size": self._config.database.pool_size,
+                "max_overflow": self._config.database.max_overflow,
+                "pool_timeout": self._config.database.pool_timeout
+            },
+            "korapay": {
+                "public_key": self._config.korapay.public_key,
+                "secret_key": self._config.korapay.secret_key,
+                "base_url": self._config.korapay.base_url,
+                "callback_url": self._config.korapay.callback_url
+            },
+            "monnify": {
+                "api_key": self._config.monnify.api_key,
+                "secret_key": self._config.monnify.secret_key,
+                "contract_code": self._config.monnify.contract_code,
+                "base_url": self._config.monnify.base_url
+            },
+            "telegram": {
+                "bot_token": self._config.telegram.bot_token,
+                "webhook_url": self._config.telegram.webhook_url
+            },
+            "debug": self._config.debug,
+            "port": self._config.port
+        }
     
     def get_database_config(self) -> DatabaseConfig:
         """Get database configuration"""
@@ -184,3 +215,19 @@ class ConfigManager(BaseService):
             validation_results = {k: False for k in validation_results}
         
         return validation_results
+
+    async def shutdown(self) -> None:
+        """Shutdown the configuration manager"""
+        self.logger.info("Configuration manager shutdown")
+        pass
+
+    async def health_check(self) -> bool:
+        """Check if configuration is valid"""
+        try:
+            if not self._config:
+                return False
+            validation_results = await self.validate_config()
+            return all(validation_results.values())
+        except Exception as e:
+            self.logger.error(f"Configuration health check failed: {e}")
+            return False
