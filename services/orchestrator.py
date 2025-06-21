@@ -1,19 +1,5 @@
 """
-Application Orchestrator - Manages and coordinates all            
-            # 4. Validate all services
-            health_check = await self.health_check()
-            
-            if health_check['overall_status'] != 'healthy':
-                logger.error("❌ Service initialization failed health check")
-                return False
-            
-            self.is_initialized = True
-            logger.info("✅ All microservices initialized successfully")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize application: {e}")
-            return Falses
+Application Orchestrator - Manages and coordinates all microservices
 """
 
 import logging
@@ -92,7 +78,8 @@ class ApplicationOrchestrator:
         # Initialize config manager first
         await self.config_manager.initialize()
         self.config = self.config_manager.get_config()
-          # Database Service
+        
+        # Database Service
         self.services['database'] = DatabaseService("database", self.config)
         await self.services['database'].initialize()
         
@@ -102,23 +89,31 @@ class ApplicationOrchestrator:
         """Initialize business logic services"""
         # User Service
         self.services['user'] = UserService("user", self.config)
+        await self.services['user'].initialize()
         
         # Payment Service
         self.services['payment'] = PaymentService("payment", self.config)
+        await self.services['payment'].initialize()
         
         # Transfer Service
         self.services['transfer'] = TransferService("transfer", self.config)
+        await self.services['transfer'].initialize()
         
         # Bank Service
         self.services['bank'] = BankService("bank", self.config)
+        await self.services['bank'].initialize()
         
-        # Budget Service        self.services['budget'] = BudgetService("budget", self.config)
+        # Budget Service
+        self.services['budget'] = BudgetService("budget", self.config)
+        await self.services['budget'].initialize()
         
         # Meal Service
         self.services['meal'] = MealService("meal", self.config)
+        await self.services['meal'].initialize()
         
         # Notification Service
         self.services['notification'] = NotificationService("notification", self.config)
+        await self.services['notification'].initialize()
         
         logger.info("✅ Business services initialized")
     
@@ -177,11 +172,14 @@ class ApplicationOrchestrator:
         
         for service_name, service in self.services.items():
             try:
-                if hasattr(service, 'get_health_status'):
-                    health_status = service.get_health_status()
-                    health_results[service_name] = health_status
+                if hasattr(service, 'health_check'):
+                    health_status = await service.health_check()
+                    health_results[service_name] = {
+                        'status': 'healthy' if health_status else 'unhealthy',
+                        'service_name': service_name
+                    }
                     
-                    if health_status.get('status') != 'healthy':
+                    if not health_status:
                         overall_healthy = False
                 else:
                     health_results[service_name] = {
@@ -203,20 +201,27 @@ class ApplicationOrchestrator:
         }
     
     # High-level business operations
-    async def process_user_registration(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def register_user(self, user_id: int, username: str = None, first_name: str = None, last_name: str = None) -> Dict[str, Any]:
         """Handle new user registration"""
         try:
+            user_data = {
+                'user_id': user_id,
+                'username': username,
+                'first_name': first_name,
+                'last_name': last_name
+            }
+            
             # Create user
             user_result = await self.services['user'].create_user(user_data)
             
-            if user_result['success']:
+            if user_result.get('success'):
                 # Send welcome notification
                 await self.services['notification'].send_welcome_message(
-                    user_data['user_id'], 
-                    user_data.get('first_name', 'User')
+                    user_id, 
+                    first_name or 'User'
                 )
                 
-                logger.info(f"✅ User {user_data['user_id']} registered successfully")
+                logger.info(f"✅ User {user_id} registered successfully")
             
             return user_result
             
@@ -228,14 +233,32 @@ class ApplicationOrchestrator:
                 'error_code': 'REGISTRATION_ERROR'
             }
     
-    async def process_budget_setup(self, user_id: int, monthly_amount: float) -> Dict[str, Any]:
+    async def set_user_budget(self, user_id: int, amount_text: str) -> Dict[str, Any]:
         """Handle budget setup for user"""
         try:
-            # Set budget
-            budget_result = await self.services['budget'].set_user_budget(user_id, monthly_amount)
+            # Validate amount
+            try:
+                amount = float(amount_text.replace(',', ''))
+                if amount < 1000 or amount > 1000000:
+                    return {
+                        'success': False,
+                        'error': 'Amount must be between ₦1,000 and ₦1,000,000'
+                    }
+            except ValueError:
+                return {
+                    'success': False,
+                    'error': 'Please enter a valid numeric amount'
+                }
             
-            if budget_result['success']:
-                logger.info(f"✅ Budget set for user {user_id}: ₦{monthly_amount:,.2f}")
+            # Set budget
+            budget_result = await self.services['budget'].set_user_budget(user_id, amount)
+            
+            if budget_result.get('success'):
+                logger.info(f"✅ Budget set for user {user_id}: ₦{amount:,.2f}")
+                return {
+                    'success': True,
+                    'amount': amount
+                }
             
             return budget_result
             
@@ -257,7 +280,7 @@ class ApplicationOrchestrator:
                 currency='NGN'
             )
             
-            if payment_result['success']:
+            if payment_result.get('success'):
                 logger.info(f"✅ Payment initialized for user {user_id}: ₦{amount:,.2f}")
             
             return payment_result
@@ -268,128 +291,6 @@ class ApplicationOrchestrator:
                 'success': False,
                 'error': str(e),
                 'error_code': 'PAYMENT_ERROR'
-            }
-    
-    async def process_daily_allowance(self, user_id: int) -> Dict[str, Any]:
-        """Handle daily allowance processing"""
-        try:
-            # Check if allowance is available
-            availability = await self.services['budget'].check_daily_allowance_available(user_id)
-            
-            if not availability['available']:
-                return {
-                    'success': False,
-                    'error': availability['reason'],
-                    'error_code': availability['error_code']
-                }
-            
-            # Deduct from balance
-            deduction_result = await self.services['budget'].process_daily_allowance_deduction(user_id)
-            
-            if not deduction_result['success']:
-                return deduction_result
-            
-            # Get user bank details
-            bank_details = await self.services['bank'].get_user_bank_details(user_id)
-            
-            if not bank_details:
-                return {
-                    'success': False,
-                    'error': 'No bank details found',
-                    'error_code': 'NO_BANK_DETAILS'
-                }
-            
-            # Initiate transfer
-            transfer_result = await self.services['transfer'].initiate_transfer(
-                user_id=user_id,
-                amount=deduction_result['amount_deducted'],
-                bank_details=bank_details,
-                narration="Daily allowance transfer"
-            )
-            
-            if transfer_result['success']:
-                # Send notification
-                await self.services['notification'].send_transfer_notification(
-                    user_id=user_id,
-                    amount=deduction_result['amount_deducted'],
-                    bank_info=bank_details,
-                    status=transfer_result.get('status', 'initiated'),
-                    transfer_date=datetime.now().strftime('%Y-%m-%d')
-                )
-                
-                logger.info(f"✅ Daily allowance processed for user {user_id}: ₦{deduction_result['amount_deducted']:,.2f}")
-            
-            return transfer_result
-            
-        except Exception as e:
-            logger.error(f"❌ Daily allowance processing failed for user {user_id}: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'error_code': 'ALLOWANCE_ERROR'
-            }
-    
-    async def process_meal_suggestions(self, user_id: int, target_budget: float = None) -> Dict[str, Any]:
-        """Handle meal suggestion generation"""
-        try:
-            # Generate suggestions
-            suggestions_result = await self.services['meal'].get_daily_meal_suggestions(
-                user_id, target_budget
-            )
-            
-            if suggestions_result['success']:
-                logger.info(f"✅ Meal suggestions generated for user {user_id}")
-            
-            return suggestions_result
-            
-        except Exception as e:
-            logger.error(f"❌ Meal suggestions failed for user {user_id}: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'error_code': 'MEAL_SUGGESTIONS_ERROR'
-            }
-    
-    async def process_bank_setup(self, user_id: int, account_number: str, bank_code: str) -> Dict[str, Any]:
-        """Handle bank account setup"""
-        try:
-            # Validate bank account
-            validation_result = await self.services['bank'].validate_bank_account(
-                account_number, bank_code
-            )
-            
-            if not validation_result:
-                return {
-                    'success': False,
-                    'error': 'Bank account validation failed',
-                    'error_code': 'VALIDATION_FAILED'
-                }
-            
-            # Save bank details
-            save_result = await self.services['bank'].save_user_bank_details(user_id, validation_result)
-            
-            if save_result:
-                # Send confirmation notification
-                await self.services['notification'].send_bank_setup_success(user_id, validation_result)
-                
-                logger.info(f"✅ Bank details saved for user {user_id}")
-                return {
-                    'success': True,
-                    'bank_info': validation_result
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Failed to save bank details',
-                    'error_code': 'SAVE_FAILED'
-                }
-                
-        except Exception as e:
-            logger.error(f"❌ Bank setup failed for user {user_id}: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'error_code': 'BANK_SETUP_ERROR'
             }
     
     async def get_user_dashboard_data(self, user_id: int) -> Dict[str, Any]:
@@ -431,6 +332,15 @@ class ApplicationOrchestrator:
                 'error': str(e),
                 'error_code': 'DASHBOARD_ERROR'
             }
+    
+    async def check_rate_limit(self, user_id: int, action: str, max_requests: int = 10) -> bool:
+        """Check if user is within rate limits"""
+        try:
+            # Simple rate limiting - can be enhanced with Redis
+            return True  # For now, always allow
+        except Exception as e:
+            logger.error(f"❌ Rate limit check failed: {e}")
+            return False
     
     async def shutdown(self):
         """Gracefully shutdown all services"""

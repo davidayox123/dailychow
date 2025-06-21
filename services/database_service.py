@@ -36,8 +36,7 @@ class DatabaseService(BaseService):
         self._connection_stats = {
             "total_connections": 0,
             "active_connections": 0,
-            "total_queries": 0,
-            "failed_queries": 0,
+            "total_queries": 0,            "failed_queries": 0,
             "avg_query_time": 0.0
         }
     
@@ -45,9 +44,9 @@ class DatabaseService(BaseService):
         """Initialize database connection pool."""
         try:
             self.pool = await asyncpg.create_pool(
-                dsn=self.db_config.url,
+                dsn=self.db_config["url"],
                 min_size=5,
-                max_size=self.db_config.pool_size,
+                max_size=self.db_config["pool_size"],
                 max_inactive_connection_lifetime=300,
                 command_timeout=60,
                 server_settings={

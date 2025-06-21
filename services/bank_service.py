@@ -22,6 +22,16 @@ class BankService(BaseService):
         self.transfer_service = transfer_service
         self.db_service = db_service
     
+    async def initialize(self) -> None:
+        """Initialize the bank service"""
+        self.logger.info("Bank service initialized")
+        pass
+    
+    async def shutdown(self) -> None:
+        """Shutdown the bank service"""
+        self.logger.info("Bank service shutdown")
+        pass
+    
     async def get_supported_banks(self) -> Optional[List[Dict[str, Any]]]:
         """Get list of supported banks from Monnify"""
         try:

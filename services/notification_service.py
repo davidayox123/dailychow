@@ -21,6 +21,16 @@ class NotificationService(BaseService):
         """Set the Telegram bot instance for sending messages"""
         self.bot_instance = bot_instance
     
+    async def initialize(self) -> None:
+        """Initialize the notification service"""
+        self.logger.info("Notification service initialized")
+        pass
+    
+    async def shutdown(self) -> None:
+        """Shutdown the notification service"""
+        self.logger.info("Notification service shutdown")
+        pass
+    
     def _load_message_templates(self) -> Dict[str, str]:
         """Load message templates for different notification types"""
         return {
