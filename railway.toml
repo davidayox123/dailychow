@@ -18,4 +18,4 @@
   DEBUG = "false"
   PORT = "8000"
   # Use your Render PostgreSQL connection string here:
-  DATABASE_URL = "postgresql://user:password@host:port/dbname"
+  DATABASE_URL = ""
