@@ -1,0 +1,21 @@
+[build]
+  command = "pip install -r requirements.txt"
+
+[deploy]
+  start = "python main_microservices.py"
+  restart = "on-failure"
+
+[env]
+  # Set these in the Railway dashboard for security!
+  TELEGRAM_BOT_TOKEN = ""
+  KORAPAY_PUBLIC_KEY = ""
+  KORAPAY_SECRET_KEY = ""
+  KORAPAY_CALLBACK_URL = ""
+  MONNIFY_API_KEY = ""
+  MONNIFY_SECRET_KEY = ""
+  MONNIFY_CONTRACT_CODE = ""
+  MONNIFY_BASE_URL = "https://api.monnify.com"
+  DEBUG = "false"
+  PORT = "8000"
+  # Use your Render PostgreSQL connection string here:
+  DATABASE_URL = "postgresql://user:password@host:port/dbname"
